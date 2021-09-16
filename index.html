@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>To-Do</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  </head>
+  <body>
+    <div id="errors" style="color: red"></div>
+
+    <form id="regform" action="http://demo2.z-bit.ee/users" method="POST">
+      <input name="username" type="text" placeholder="username" />
+      <input name="password" type="password" placeholder="Password" />
+      <button onclick="login(event)">login</button>
+      <button onclick="register(event)">create account</button>
+    </form>
+    <div id="app" style="display: none">
+      <div id="list"></div>
+      <button id="addTask">Add task</button>
+      <button id="save" onclick="saveAllTasks()">Save tasks</button>
+    </div>
+
+    <script>
+      let accessToken;
+      let elementeLisatud = 1;
+
+      function register(event) {
+        event.preventDefault();
+        console.log("test reg");
+        let data = {
+          username: document.querySelector("#regform input[name=username]")
+            .value,
+          newPassword: document.querySelector("#regform input[name=password]")
+            .value,
+        };
+
+        fetch("http://demo2.z-bit.ee/users", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => response.json())
+          .then(parseServerLoginResponse);
+      }
+
+      function login(event) {
+        console.log("töötab");
+        event.preventDefault();
+
+        let data = {
+          username: document.querySelector("#regform input[name=username]")
+            .value,
+          password: document.querySelector("#regform input[name=password]")
+            .value,
+        };
+
+        fetch("http://demo2.z-bit.ee/users/get-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + parseServerLoginResponse.accessToken,
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => response.json())
+          .then(parseServerLoginResponse)
+          .then(() => {
+            fetch("http://demo2.z-bit.ee/tasks", {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + accessToken,
+              },
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                console.log(data);
+                console.log(accessToken);
+                for (let i = 0; i < data.length; i++) {
+                  createNewTask(data[i]);
+                }
+              });
+          });
+      }
+
+      function parseServerLoginResponse(response) {
+        console.log("sain vastuse");
+        if (response.hasOwnProperty("access_token")) {
+          accessToken = response.access_token;
+          document.querySelector("#regform").style.display = "none";
+          document.querySelector("#app").style.display = "block";
+        } else {
+          if (response instanceof Array) {
+            document.querySelector("#errors").textContent = "";
+            response.forEach(
+              (e) =>
+                (document.querySelector("#errors").innerHTML +=
+                  e.message + "<br>")
+            );
+          } else {
+            document.querySelector("#errors").textContent =
+              "error: " + response.message;
+          }
+        }
+      }
+
+      $("#addTask").on("click", () => {
+        let titleNI = prompt("Lisa tegemist vajav tegevus");
+        if (titleNI !== null) {
+  
+          createNewTask({ titleNI });
+        }
+      });
+      function saveAllTasks(event) {
+        [...document.querySelectorAll("#list > *")].forEach((elem) => {
+          let data = {
+            title: elem.querySelector("[name=title]").value,
+            id: elem.dataset.id,
+            marked_as_done: elem.querySelector("[type=checkbox]").checked,
+          };
+          let url = "";
+          let method = "POST";
+          if (data.id !== "undefined") {
+            method = "PUT";
+            url = "/" + data.id;
+          }
+          fetch("http://demo2.z-bit.ee/tasks" + url, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+            body: JSON.stringify(data),
+          })
+            .then((response) => response.json())
+            .then((response) => (elem.dataset.id = response.id));
+        });
+      }
+
+      function deleteClick(event) {
+        event.target.parentElement.remove();
+        fetch(
+          "http://demo2.z-bit.ee/tasks/" +
+            event.target.parentElement.dataset.id,
+          {
+            method: "delete",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+          }
+        );
+      }
+
+      function createNewTask(data) {
+        $(`<div data-id="${data.id}">
+                <input name="title" value="${
+                  data.titleNI
+                }" onclick="inputClick(event)" />
+                <input type="checkbox" ${data.marked_as_done ? "checked" : ""}/>
+                <input type="button" onclick="deleteClick(
+                  event
+                )" value="Delete" />
+            </div>`).appendTo($("#list"));
+      }
+    </script>
+  </body>
+</html>
