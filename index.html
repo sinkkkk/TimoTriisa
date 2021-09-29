@@ -23,6 +23,8 @@
       let accessToken;
       let elementeLisatud = 1;
 
+
+
       function register(event) {
         event.preventDefault();
         console.log("test reg");
@@ -106,10 +108,10 @@
       }
 
       $("#addTask").on("click", () => {
-        let titleNI = prompt("Lisa tegemist vajav tegevus");
-        if (titleNI !== null) {
-  
-          createNewTask({ titleNI });
+        let title = prompt("Lisa tegemist vajav tegevus");
+        if (title !== null) {
+          let markedAsDone = confirm("Kas see on tehtud?");
+          createNewTask({ title });
         }
       });
       function saveAllTasks(event) {
@@ -156,7 +158,7 @@
       function createNewTask(data) {
         $(`<div data-id="${data.id}">
                 <input name="title" value="${
-                  data.titleNI
+                  data.title
                 }" onclick="inputClick(event)" />
                 <input type="checkbox" ${data.marked_as_done ? "checked" : ""}/>
                 <input type="button" onclick="deleteClick(
